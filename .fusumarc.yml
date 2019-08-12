@@ -1,11 +1,11 @@
 meta:
-  title:
+  title: "Odyssee von C nach C++, ein Reisebericht"
   thumbnail:
   description:
   sns:
     - twitter
 slide:
-  loop: true
+  loop: false
   sidebar: true
   targetBlank: true
   showIndex: true
@@ -13,8 +13,16 @@ slide:
   code:
     languages:
       - javascript
-    plugins: []
-    theme: default
+      - cpp
+      - c
+      - rust
+      - protobuf
+      - json
+      - cmake
+      - bash
+    plugins:
+      - line-numbers
+    theme: twilight
   chart: false
   math: false
 extends:
