@@ -3,7 +3,6 @@ meta:
   thumbnail:
   description:
   sns:
-    - twitter
 slide:
   loop: false
   sidebar: true
