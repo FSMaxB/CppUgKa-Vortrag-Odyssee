@@ -1,6 +1,6 @@
-<!-- sectionTitle: Modern C++ -->
+<!-- sectionTitle: Modern C++ Tidbits -->
 
-# Modern C++
+# Modern C++ Tidbits
 
 ---
 
