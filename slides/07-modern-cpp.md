@@ -89,3 +89,10 @@ auto& data = *data_optional;
 
 * Laufzeit-Check unmöglich.
 * `subspan` ist undefined wenn out of range
+
+---
+
+## max_align_t (C++17)
+
+* `alignof(max_align_t)` Maximal mögliches Alignment
+* Früher simuliert durch `int_max_t` aber nicht durch Standard garantiert.
