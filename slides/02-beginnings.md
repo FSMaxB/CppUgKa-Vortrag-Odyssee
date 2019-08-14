@@ -2,24 +2,6 @@
 
 ---
 
-## Keys löschen
-
-❌ *dead store elimination*
-```c
-memset(buffer, sizeof(char), buffer_size);
-```
-
----
-
-## Keys löschen
-
-✅ gelöstes Problem
-```c
-sodium_memzero(buffer, buffer_size);
-```
-
----
-
 ## Error Handling
 
 ❌ errno
