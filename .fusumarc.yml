@@ -19,6 +19,7 @@ slide:
       - json
       - cmake
       - bash
+      - diff
     plugins:
       - line-numbers
     theme: twilight
