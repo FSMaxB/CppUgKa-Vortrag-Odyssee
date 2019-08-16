@@ -137,7 +137,7 @@ alignof
 
 ## Referenzen
 
-<!-- notes
+<!-- note
 Viele NULL-Checks werden überflüssig
 -->
 
@@ -167,7 +167,7 @@ void do_something(buffer_t& buffer) {
 
 ## Goto
 
-<!-- notes
+<!-- note
 Semikolon nach Goto-Label
 -->
 
@@ -254,7 +254,7 @@ sodium_mprotect_noaccess(master_keys);
 
 ### ✅ C++
 
-<!-- notes
+<!-- note
 Ja ich weiß, das hätte man auch als Methode auf MasterKeys machen können
 -->
 

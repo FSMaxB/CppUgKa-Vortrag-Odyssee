@@ -32,14 +32,14 @@ switch (ternary) {
 
 ## Switch Case
 
-<!-- notes
+<!-- note
 Immediately Invoked Function Expression
 -->
 
 ### Neu (IIFE)
 
 ```cpp
-char digit = [=]{
+const char digit = [=]{
   switch (ternary) {
     case 0:
       return '0';
@@ -61,7 +61,7 @@ char digit = [=]{
 ## if-Expression
 
 ```cpp
-char digit = [=]{
+const char digit = [=]{
   if (binary) {
     return '1';
   } else {

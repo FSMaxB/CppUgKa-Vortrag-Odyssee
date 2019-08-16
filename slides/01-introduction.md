@@ -2,7 +2,7 @@
 
 ## Worum gehts?
 
-<!-- notes
+<!-- note
 * Persönliche Odyssee
 -->
 * [Molch](https://github.com/1984Not-GmbH/molch)-Library
@@ -31,7 +31,7 @@
 * Rust
 * C++
 * C
-<!-- notes
+<!-- note
 Meine Argumente 2015
 -->
 

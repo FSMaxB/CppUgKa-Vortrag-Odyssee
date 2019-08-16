@@ -29,7 +29,7 @@ int diffie_hellman(/* ... */) {
 ---
 
 ## ⚠ Achtung
-<!-- notes
+<!-- note
 return type nicht gecheckt
 -->
 ```c
@@ -220,7 +220,7 @@ typedef enum status_type {
 ---
 
 ## Stacktraces (oder so ...)
-<!-- notes
+<!-- note
 Wer aus dem Publikum hat schon eine linked list implementiert?
 -->
 
@@ -249,7 +249,7 @@ status_type return_status_add_error_message(
 
 ## Stacktraces (oder so ...)
 
-<!-- notes
+<!-- note
 Kommt das "keyword" jemandem bekannt vor?
 -->
 

@@ -48,7 +48,7 @@ size_t molch__protobuf__key__pack(const Molch__Protobuf__Key *message, uint8_t *
 
 ❌ *dead store elimination*
 ```c
-memset(buffer, sizeof(char), buffer_size);
+memset(buffer, '\0', buffer_size);
 ```
 
 ---
