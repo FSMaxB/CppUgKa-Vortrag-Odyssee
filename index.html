@@ -1,0 +1,444 @@
+<!DOCTYPE html><html lang="en"><head><meta http-equiv="Content-type" content="text/html; charset=utf-8"><meta name="theme-color" content="#3498db"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Odyssee von C nach C++, ein Reisebericht</title><meta property="og:title" content="Odyssee von C nach C++, ein Reisebericht"><meta property="og:type" content="article"><meta property="og:site_name" content="fsmaxb.github.io/cppugka-vortrag-odyssee"><link href="vendor.6.107b380331854694e287.css" rel="stylesheet"></head><body><div id="root"><svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" class="btn-sidebar" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"></path></svg><article id="webslides"><section class="aligncenter"><h1>Odyssee von C nach C++, ein Reisebericht</h1><h2>Max Bruckner</h2></section><section class="aligncenter section-title"><h2>Worum gehts?</h2><ul><li><a href="https://github.com/1984Not-GmbH/molch">Molch</a>-Library</li><li><a href="https://signal.org/docs/specifications/doubleratchet/">Double Ratchet</a>-Implementierung<ul><li>Krypto-Messenger-Protokoll</li><li>ehemals Axolotl</li></ul></li><li>Projektstart: Mitte 2015</li></ul></section><section class="aligncenter"><h2>Anforderungen</h2><ul><li>Plattformübergreifend<ul><li>Desktop</li><li>Android</li><li>iOS</li></ul></li><li>Keys sicher im Speicher</li><li>State (de-)serialisierbar</li></ul></section><section class="aligncenter section-title"><h2>Sprachen</h2><ul><li>Java</li><li>Go</li><li>Rust</li><li>C++</li><li>C</li></ul></section><section class="aligncenter"><h2>Java</h2><ul><li>iOS? (-)</li><li>Speicher löschen? (-)</li><li>Garbage Collector? (-)</li><li>Speichersicher (+)</li></ul></section><section class="aligncenter"><h2>Go</h2><ul><li>recht jung (-)</li><li>Speicher löschen? (-)</li><li>Cross-Kompilierung? (-)</li><li>Libraries? (-)</li><li>Speichersicher (+)</li></ul></section><section class="aligncenter"><h2>Rust</h2><ul><li>extrem Jung (-)</li><li>Cross-Kompilierung? (-)</li><li>Libraries? (-)</li><li>Speichersicher (+)</li></ul></section><section class="aligncenter"><h2>C++</h2><ul><li>sehr Komplex (-)</li><li>unsicher (-)</li><li>plattformübergreifend (+)</li></ul></section><section class="aligncenter"><h2>C</h2><ul><li>unsicher (-)</li><li>plattformübergreifend (+)</li><li>einfach (+) 🤔</li></ul></section><section class="aligncenter"><h2>Entscheidung</h2><ul><li>C/C++ damals alternativlos</li><li>C++ zu komplex</li><li>⇒ <strong>C</strong></li></ul></section><section class="aligncenter"><h1>Erste Schritte</h1></section><section class="aligncenter"><h2>Error Handling</h2><p>❌ errno</p></section><section class="aligncenter section-title"><h2>Error Handling</h2><p><strong>0 == Erfolg</strong></p><pre><code class="language-c">int diffie_hellman(/* ... */) {
+  int status = 0;
+  /* ... */
+  status = crypto_scalarmult(/* ... */);
+  if (status != 0) {
+    return status;
+  }
+  /* ... */
+  return status;
+}
+</code></pre></section><section class="aligncenter"><h2>⚠ Achtung</h2><pre><code class="language-c">/* --&gt; */ diffie_hellman(/* ... */);
+if (status != 0) {
+  return status;
+}
+</code></pre></section><section class="aligncenter"><h2>Lösung</h2><h3>C</h3><pre><code class="language-c">int diffie_hellman(/* ... */) __attribute__((warn_unused_result));
+</code></pre><h3>C++ (17)</h3><pre><code class="language-cpp">[[nodiscard]] // Auch für Typen
+</code></pre></section><section class="aligncenter"><h2>Bequemlichkeit</h2><p>🙁</p><pre><code class="language-c">if (status != 0) {
+  return status;
+}
+</code></pre></section><section class="aligncenter"><h2>Bequemlichkeit</h2><p>🙂</p><pre><code class="language-c">#define on_error if (status != 0)
+
+on_error {
+  return status;
+}
+</code></pre></section><section class="aligncenter"><h2>Ressourcenverwaltung</h2><pre><code class="language-c">char *buffer1 = malloc(size1);
+/* .. */
+
+on_error {
+  free(buffer1);
+  return status;
+}
+
+char *buffer2 = malloc(size2);
+
+/* .. */
+
+on_error {
+  free(buffer1);
+  free(buffer2);
+  return status;
+}
+
+</code></pre></section><section class="aligncenter"><h2>⚠ Memory Leak</h2><pre><code class="language-diff">diff --git a/lib/message.c b/lib/message.c
+index fb2f0d30d..60897128a 100644
+--- a/lib/message.c
++++ b/lib/message.c
+@@ -152,6 +152,7 @@ int decrypt_message(
+                        key);
+        if (status != 0) {
+                sodium_memzero(plaintext_buffer, PLAINTEXT_LENGTH);
++               free(plaintext_buffer);
+                return status;
+        }
+
+@@ -164,6 +165,7 @@ int decrypt_message(
+        //copy plaintext to message (output)
+        memcpy(message, plaintext_buffer, *message_length);
+        sodium_memzero(plaintext_buffer, PLAINTEXT_LENGTH);
++       free(plaintext_buffer);
+
+        //copy header length to output
+        *header_length = HEADER_LENGTH;
+</code></pre></section><section class="aligncenter"><h2>Goto considered beneficial</h2><pre><code class="language-c">char *buffer1 = NULL;
+char *buffer2 = NULL;
+/* .. */
+buffer1 = malloc(size1);
+/* .. */
+on_error {
+  goto cleanup;
+}
+buffer2 = malloc(size2);
+/* .. */
+on_error {
+  goto cleanup;
+}
+/* .. */
+cleanup:
+  if (buffer1 != NULL) {
+    free(buffer1);
+  }
+  if (buffer2 != NULL) {
+    free(buffer2);
+  }
+
+  return status;
+</code></pre></section><section class="aligncenter"><h2>Mehr Bequemlichkeit</h2><pre><code class="language-c">#define free_and_null(pointer)\
+  free(pointer);\
+  pointer = NULL;
+
+#define free_and_null_if_valid(pointer)\
+  if (pointer != NULL) {\
+    free_and_null(pointer)\
+  }
+</code></pre></section><section class="aligncenter"><h2>Mehr Bequemlichkeit</h2><pre><code class="language-c">char *buffer1 = NULL;
+char *buffer2 = NULL;
+/* .. */
+buffer1 = malloc(size1);
+/* .. */
+on_error {
+  goto cleanup;
+}
+buffer2 = malloc(size2);
+/* .. */
+on_error {
+  goto cleanup;
+}
+/* .. */
+cleanup:
+  free_and_null_if_valid(buffer1);
+  free_and_null_if_valid(buffer1); /* BUG verhindert (double free)! */
+  free_and_null_if_valid(buffer2);
+
+  return status;
+</code></pre></section><section class="aligncenter"><h2>Fehlertypen</h2><pre><code class="language-c">typedef enum status_type {
+  SUCCESS = 0,
+  GENERIC_ERROR,
+  INVALID_INPUT,
+  INVALID_VALUE,
+  INCORRECT_BUFFER_SIZE,
+  /* ... */
+} status_type;
+</code></pre></section><section class="aligncenter"><h1>Let&#x27;s get crazy</h1></section><section class="aligncenter"><h2>Stacktraces (oder so ...)</h2><pre><code class="language-c">typedef struct error_message error_message;
+struct error_message {
+  const char * message;
+  status_type status;
+  error_message *next; // &lt;-- linked list
+};
+
+typedef struct return_status {
+  status_type status;
+  error_message *error;
+} return_status;
+
+return_status return_status_init();
+
+status_type return_status_add_error_message(
+        return_status *const status_object,
+        const char *const message,
+        const status_type status) __attribute__((warn_unused_result));
+</code></pre></section><section class="aligncenter"><h2>Stacktraces (oder so ...)</h2><pre><code class="language-c">#define throw(status_type_value, message) {\
+    status.status = status_type_value;\
+    if (message != NULL) {\
+        status_type type = return_status_add_error_message(&amp;status, message, status_type_value);\
+        if (type != SUCCESS) {\
+            status.status = type;\
+        }\
+    } else {\
+        status.error = NULL;\
+    }\
+\
+    goto cleanup;\
+}
+
+#define on_error if (status.status != SUCCESS)
+
+#define throw_on_error(status_type_value, message) \
+  on_error {\
+    throw(status_type_value, message)\
+  }
+</code></pre></section><section class="aligncenter"><h2>Ergebnis</h2><pre><code class="language-c">return_status status = return_status_init();
+char *buffer = NULL;
+
+/* ... */
+status = funktion();
+throw_on_error(GENERIC_ERROR, &quot;Aufruf ist fehlgeschlagen&quot;)
+
+cleanup:
+  free_and_null_if_valid(buffer);
+
+  return status;
+</code></pre></section><section class="aligncenter section-title"><h1>Serialisierung</h1></section><section class="aligncenter"><h2>Protocol Buffers</h2><pre><code class="language-protobuf">syntax = &quot;proto2&quot;;
+
+option optimize_for = LITE_RUNTIME;
+
+package Molch.Protobuf;
+
+message Key {
+  required bytes key = 1;
+}
+</code></pre></section><section class="aligncenter"><h2>Protobuf-C</h2><h3>generierter Code</h3><pre><code class="language-c">typedef struct _Molch__Protobuf__Key Molch__Protobuf__Key;
+struct  _Molch__Protobuf__Key
+{
+  ProtobufCMessage base;
+  ProtobufCBinaryData key;
+};
+
+void   molch__protobuf__key__init(Molch__Protobuf__Key *message);
+size_t molch__protobuf__key__get_packed_size(const Molch__Protobuf__Key *message);
+size_t molch__protobuf__key__pack(const Molch__Protobuf__Key *message, uint8_t *out);
+/* ... */
+</code></pre></section><section class="aligncenter"><h2>Keys löschen</h2><p>❌ <em>dead store elimination</em></p><pre><code class="language-c">memset(buffer, &#x27;\0&#x27;, buffer_size);
+</code></pre></section><section class="aligncenter"><h2>Keys löschen</h2><p>✅ gelöstes Problem</p><pre><code class="language-c">sodium_memzero(buffer, buffer_size);
+</code></pre></section><section class="aligncenter"><h2>sodium_malloc</h2><ul><li>Allokiert 4 oder mehr Speicherseiten<ul><li>Guard page davor</li><li>Nutz-Page</li><li>Guard page danach</li></ul></li><li><code>sodium_memzero</code> bei deallokation</li><li>❌ zu viele kleine Allokationen</li></ul></section><section class="aligncenter"><pre><code>          page 1               page 2               page 3                     page n - 1     page n
++-------------------------+------------+----------------------------+-- ... --+-----------+------------+
+| allocation_size | empty | guard page | empty | canary | user_data |   ...   | user_data | guard page |
++-------------------------+------------+----------------------------+-- ... --+-----------+------------+
+^                                      ^       ^        ^
+|                                      | ------|--------| unprotected size ---------------|
+base_ptr                 unprotected_ptr       |        user_ptr
+                                               canary_ptr
+</code></pre><p><a href="https://github.com/jedisct1/libsodium/issues/572#issuecomment-319654932">Aus einem GitHub-Kommentar von mir</a></p></section><section class="aligncenter"><h2>zeroed_malloc</h2><ul><li>Eigenimplementierung</li><li>Speichert Länge</li><li>Überschreibt beim deallokieren mit 0</li></ul></section><section class="aligncenter"><h2>Erste tests auf ARM</h2></section><section class="aligncenter"><h2>Erste tests auf ARM</h2><h3>Program terminated with signal SIGBUS, Bus error.</h3></section><section class="aligncenter"><h2>Alignment</h2><pre><code class="language-c">void *next_aligned_address(void *pointer, size_t alignment){
+  //determine the amount of padding for proper alignment
+  size_t padding = 0; //padding needed to fit alignment
+  if (alignment != 0) {
+    padding = (alignment - (((size_t)pointer) % alignment)) % alignment;
+  }
+
+  return (char*)pointer + padding;
+}
+</code></pre></section><section class="aligncenter"><h2>Protobuf-C allocator</h2><pre><code class="language-c">void *protobuf_c_allocator(void *allocator_data __attribute__((unused)), size_t size) {
+  return zeroed_malloc(size);
+}
+
+void protobuf_c_free(void *allocator_data __attribute__((unused)), void *pointer) {
+  zeroed_free(pointer);
+}
+
+static ProtobufCAllocator protobuf_c_allocators __attribute__((unused)) = {
+  &amp;protobuf_c_allocator,
+  &amp;protobuf_c_free,
+  NULL
+};
+</code></pre></section><section class="aligncenter section-title"><h1>Migration</h1></section><section class="aligncenter"><h2>Schritte</h2><ul><li><code>-Wc++-compat</code></li><li>Datei für Datei</li><li><code>throw</code>-Makro → <code>THROW</code></li><li><code>NULL</code> → <code>nullptr</code></li><li><code>-Wzero-as-nullpointer-constant</code></li></ul></section><section class="aligncenter"><h2>Schritte</h2><ul><li><code>memset</code> → <code>std::fill</code></li><li><code>memcpy</code> → <code>std::copy</code></li><li>Expliziter cast vor <code>malloc</code></li><li>Standard-Container<ul><li><code>std::vector</code>, <code>std::vector</code> und <code>std::vector</code> 😁</li></ul></li></ul></section><section class="aligncenter"><h2>Structs → Klassen</h2><pre><code class="language-c">typedef struct master_keys {
+  /* ... */
+} master_keys;
+
+return_status master_keys_get_signing_key(
+    master_keys * const keys,
+    buffer_t * const public_signing_key) {
+  return_status status = return_status_init();
+
+  if (keys == NULL) {
+    throw(INVALID_INPUT, &quot;keys is NULL&quot;)
+  }
+  /* ... */
+}
+</code></pre></section><section class="aligncenter"><h2>Structs → Klassen</h2><pre><code class="language-cpp">class MasterKeys {
+  /* ... */
+  return_status master_keys_get_signing_key(buffer_t * const public_signing_key) {
+    return_status status = return_status_init();
+
+    if (this == nullptr) { // 🤔
+      THROW(INVALID_INPUT, &quot;keys is NULL&quot;)
+    }
+
+    /* ... */
+  }
+}
+
+</code></pre></section><section class="aligncenter"><h2>Schritte</h2><ul><li>Create-Funktionen → statische Methoden → Konstruktor</li><li>Visibility reduzieren (public/private)</li><li>Copy-/Move-Assignment Operatoren/Konstruktoren</li></ul></section><section class="aligncenter"><h2>Casts</h2><ul><li><code>-Wold-style-casts</code></li><li><code>static_cast</code></li><li><code>reinterpret_cast</code></li><li><code>const_cast</code></li><li><code>dynamic_cast</code> (nie verwendet)</li></ul></section><section class="aligncenter"><h2>and, or, not</h2><p>❌ gewohnt</p><pre><code class="language-cpp">if (!(a &amp;&amp; b) || c) {
+  /* ... */
+}
+</code></pre><p>✅ schöner</p><pre><code class="language-cpp">if (not (a and b) or c) {
+  /* ... */
+}
+</code></pre></section><section class="aligncenter"><h2>alignof</h2><h3>C</h3><pre><code class="language-c">#define ALIGNMENT_OF(type) offsetof( struct { char c; type t;}, t)
+</code></pre><h3>C++</h3><pre><code class="language-cpp">alignof
+</code></pre></section><section class="aligncenter"><h2>Headers</h2><h3>C</h3><pre><code class="language-c">#include &lt;stdint.h&gt;
+</code></pre><h3>C++</h3><pre><code class="language-cpp">#include &lt;cstdint&gt;
+</code></pre></section><section class="aligncenter"><h2>Referenzen</h2><h3>C</h3><pre><code class="language-c">return_status do_something(buffer_t *buffer) {
+  return_status status = return_status_init();
+  if (buffer == NULL) {
+    throw(INVALID_INPUT, &quot;Buffer is missing&quot;);
+  }
+
+  /* ... */
+
+cleanup:
+  return status;
+}
+</code></pre><h3>C++</h3><pre><code class="language-cpp">void do_something(buffer_t&amp; buffer) {
+  /* ... */
+}
+</code></pre></section><section class="aligncenter"><h2>Goto</h2><p>✅ Gültiges C</p><p>❌ Ungültiges C++</p><pre><code class="language-c">goto cleanup;
+int temporary = 42;
+cleanup:
+;
+</code></pre></section><section class="aligncenter"><h2>Goto</h2><p>✅ Gültiges C++</p><pre><code class="language-c">goto cleanup;
+{
+  int temporary = 42;
+}
+cleanup:
+;
+</code></pre></section><section class="aligncenter"><h2>sizeof(character)</h2><p>x86_64</p><h3>❌ C</h3><pre><code class="language-c">printf(&quot;%zu&quot;, sizeof(&#x27;\0&#x27;)); // 4
+</code></pre><h3>✅ C++</h3><pre><code class="language-cpp">printf(&quot;%zu&quot;, sizeof(&#x27;\0&#x27;)); // 1
+</code></pre></section><section class="aligncenter"><h2>static_assert</h2><h3>C (runtime)</h3><pre><code class="language-c">assert(crypto_auth_BYTES == crypto_auth_KEYBYTES);
+</code></pre><h3>C++ (compile time)</h3><pre><code class="language-cpp">static_assert(crypto_auth_BYTES == crypto_auth_KEYBYTES);
+</code></pre></section><section class="aligncenter"><h2>RAII</h2><h3>❌ C</h3><pre><code class="language-c">buffer_t* buffer = buffer_create_on_heap(size, capacity);
+/* ... */
+cleanup:
+  buffer_destroy_from_heap(buffer);
+</code></pre><h3>✅ C++</h3><pre><code class="language-cpp">Buffer(size, capacity);
+</code></pre></section><section class="aligncenter"><h2>RAII</h2><h3>❌ C</h3><pre><code class="language-c">sodium_mprotect_readonly(master_keys);
+/* ... */
+sodium_mprotect_noaccess(master_keys);
+</code></pre><h3>✅ C++</h3><pre><code class="language-c">MasterKeys::Unlocker(master_keys) unlocker;
+</code></pre></section><section class="aligncenter"><h2>RAII</h2><ul><li><code>std::unique_ptr</code></li><li><code>std::shared_ptr</code></li><li>⚠ <code>std::bad_alloc</code> fangen!</li></ul></section><section class="aligncenter"><h2>std::unique_ptr mit anderem Allocator</h2><pre><code class="language-cpp">template &lt;typename T&gt;
+class SodiumDeleter {
+public:
+  void operator()(T* object) {
+    if (object != nullptr) {
+      sodium_free(object);
+    }
+  }
+};
+</code></pre><pre><code class="language-cpp">this-&gt;private_keys = std::unique_ptr&lt;PrivateKeys,SodiumDeleter&lt;PrivateKeys&gt;&gt;(sodium_malloc&lt;PrivateKeys&gt;(1));
+</code></pre></section><section class="aligncenter"><h2>GSL</h2><ul><li>C++ Core Guidelines</li><li>Guidelines support library</li><li><code>span</code></li><li><code>byte</code> (pre C++17)</li><li><code>narrow</code></li></ul></section><section class="aligncenter"><h2>GSL</h2><h3>Vorher</h3><pre><code class="language-c">return_status do_something(const char* bytes, size_t bytes_length);
+</code></pre><h3>Nachher</h3><pre><code class="language-cpp">return_status do_something(span&lt;byte&gt; buffer);
+</code></pre><ul><li>😕 signed size-Typ (ständige Konvertierung zu/von <code>size_t</code>)</li></ul></section><section class="aligncenter"><h2>GSL</h2><pre><code class="language-cpp">auto size = narrow&lt;size_t&gt;(signed_size);
+</code></pre><ul><li>Fehlerverhalten konfigurierbar (z.B. Exception)</li></ul></section><section class="aligncenter"><h2>templates</h2><h3>❌ C</h3><pre><code class="language-c">return_status endianness_uint32_to_big_endian(/* ... */);
+return_status endianness_int32_to_big_endian(/* ... */);
+return_status endianness_uint64_to_big_endian(/* ... */);
+return_status endianness_int64_to_big_endian(/* ... */);
+/* ... */
+</code></pre><h3>✅ C++</h3><pre><code class="language-cpp">template &lt;typename IntegerType&gt;
+void to_big_endian(IntegerType integer, span&lt;gsl::byte&gt; output) {
+/* ... */
+</code></pre></section><section class="aligncenter"><h2>templates</h2><h3>❌ C</h3><pre><code class="language-c">#define free_and_null_if_valid(pointer)\
+  if (pointer != NULL) {\
+    free(pointer);\
+    pointer = NULL;\
+  }
+</code></pre><h3>✅ C++</h3><pre><code class="language-cpp">template &lt;typename T&gt;
+inline void free_and_null_if_valid(T*&amp; pointer) {
+  if (pointer != nullptr) {
+    free(pointer);
+    pointer = nullptr;
+  }
+}
+</code></pre></section><section class="aligncenter"><h2>Namespaces</h2><h3>C</h3><pre><code class="language-c">return_status molch_create_user(/* ... */);
+return_status molch_list_users(/* ... */);
+</code></pre><h3>C++</h3><pre><code class="language-c">namespace Molch {
+  return_status create_user(/* .. */);
+  return_status list_users(/* .. */);
+}
+</code></pre></section><section class="aligncenter"><h2>Enum Class</h2><ul><li>Typensicherheit</li><li>Namespacing</li></ul><pre><code class="language-cpp">enum class status_type {
+  SUCCESS = 0,
+  GENERIC_ERROR,
+  INVALID_VALUE,
+  INCORRECT_BUFFER_SIZE,
+  BUFFER_ERROR,
+  /* ... */
+};
+</code></pre></section><section class="aligncenter"><h2>Typensichere Keys</h2><p>Nie wieder public-/private-Key in API verwechseln</p><pre><code class="language-cpp">enum class KeyType : uint8_t {
+  /* .. */
+  PublicKey,
+  PrivateKey,
+  /* ... */
+};
+
+template &lt;size_t key_length, KeyType keytype&gt;
+class Key : public std::array&lt;std::byte,key_length&gt; {
+  /* ... */
+  template &lt;typename DerivedKeyType&gt;
+  result&lt;DerivedKeyType&gt; deriveSubkeyWithIndex(const uint32_t subkey_counter) const {
+    /* ... */
+  }
+  /* ... */
+}
+
+/* ... */
+using PublicKey = Key&lt;PUBLIC_KEY_SIZE,KeyType::PublicKey&gt;;
+using PrivateKey = Key&lt;PRIVATE_KEY_SIZE,KeyType::PrivateKey&gt;;
+</code></pre></section><section class="aligncenter"><h2>Alignment</h2><pre><code class="language-cpp">std::alignof()
+</code></pre><p>Eigene Implementierung fällt weg</p></section><section class="aligncenter"><h1>Wieder Error Handling</h1></section><section class="aligncenter"><h2>Wrapper um return_status</h2><pre><code class="language-cpp">struct Error {
+  status_type type{type::status::SUCCESS};
+  std::string message;
+
+  Error(const status_type type, const std::string&amp; message);
+  /* ... */
+}
+
+class Exception : public std::exception {
+private:
+  std::deque&lt;Error&gt; error_stack;
+  mutable std::string printed;
+
+public:
+  Exception(const Error&amp; error);
+  Exception(const status_type type, const std::string&amp; message);
+  Exception(return_status&amp; status);
+}
+</code></pre></section><section class="aligncenter"><h2>Entfernen des Error-Stacks</h2></section><section class="aligncenter"><h2>Die Katastrophe passiert</h2><h3>Ich kann keine Exceptions mehr verwenden</h3><ul><li>SEGFAULT beim throwen</li></ul></section><section class="aligncenter"><h2>Ich kann keine Exceptions mehr verwenden</h2><ul><li>Keine Fehler mehr in Konstruktoren möglich</li></ul></section><section class="aligncenter"><h2>Boost Outcome to the rescue</h2><pre><code class="language-cpp">template &lt;typename Result&gt;
+using result = outcome::result&lt;Result,Error&gt;;
+</code></pre></section><section class="aligncenter"><h2>Private unvollständige Konstruktoren</h2><pre><code class="language-cpp">// Marker-Typ
+struct uninitialized_t {
+ explicit uninitialized_t() = default;
+};
+
+class MasterKeys {
+  /* ... */
+private:
+  MasterKeys(uninitialized_t uninitialized) noexcept;
+  /* ... */
+public:
+        static result&lt;MasterKeys&gt; create(/* ... */);
+}
+</code></pre></section><section class="aligncenter"><h2>Fehlerpropagierung</h2><pre><code class="language-cpp">OUTCOME_TRY(do_something());
+OUTCOME_TRY(value, calculate_something());
+</code></pre></section><section class="aligncenter section-title"><h1>Wieder Serialisierung</h1></section><section class="aligncenter"><h2>Protobuf C++-Library</h2><ul><li>API benutzt std::string für bytes<ul><li>⇒ Alle keys auf normalem Heap</li></ul></li><li>&quot;hübsche API&quot; macht Allocator-Tausch sinnlos</li></ul></section><section class="aligncenter"><h2>Arena-Allocator</h2><ul><li>Anfangs selbst implementiert</li><li>Später mit Google-Protobuf-Library</li><li>Eine Arena pro Serialisierung-/Deserialisiserung</li><li><code>sodium_malloc</code> plötzlich eine Option</li><li><code>zeroed_malloc</code> gelöscht</li></ul></section><section class="aligncenter section-title"><h1>Modern C++ Tidbits</h1></section><section class="aligncenter"><h2>Switch Case</h2><h3>Alt</h3><pre><code class="language-cpp">char digit;
+switch (ternary) {
+  case 0:
+    digit = &#x27;0&#x27;;
+    break;
+
+  case 1:
+    digit = &#x27;1&#x27;;
+    break;
+
+  case 2:
+    digit = &#x27;2&#x27;;
+    break;
+
+  default:
+    std::terminate();
+}
+</code></pre></section><section class="aligncenter"><h2>Switch Case</h2><h3>Neu (IIFE)</h3><pre><code class="language-cpp">const char digit = [=]{
+  switch (ternary) {
+    case 0:
+      return &#x27;0&#x27;;
+
+    case 1:
+      return &#x27;1&#x27;;
+
+    case 2:
+      return &#x27;2&#x27;;
+
+    default:
+      std::terminate();
+  }
+}();
+</code></pre></section><section class="aligncenter"><h2>if-Expression</h2><pre><code class="language-cpp">const char digit = [=]{
+  if (binary) {
+    return &#x27;1&#x27;;
+  } else {
+    return &#x27;0&#x27;;
+  }
+}();
+</code></pre></section><section class="aligncenter"><h2>std::optional</h2><p><strong>Clunky und Fehleranfällig</strong></p><pre><code class="language-cpp">auto data_optional = get_data();
+if (not data_optional.has_value()) {
+  return std::nullopt;
+}
+auto&amp; data = *data_optional;
+</code></pre></section><section class="aligncenter"><h2>std::span</h2><ul><li>Laufzeit-Check unmöglich.</li><li><code>subspan</code> ist undefined wenn out of range</li></ul></section><section class="aligncenter"><h2>max_align_t (C++17)</h2><ul><li><code>alignof(max_align_t)</code> Maximal mögliches Alignment</li><li>Früher simuliert durch <code>int_max_t</code> aber nicht durch Standard garantiert.</li></ul></section><section class="aligncenter section-title"><h1>Rückblick</h1></section><section class="aligncenter"><h1>Ende</h1></section></article></div><script type="text/javascript" src="runtime.7effdfd464bee64cbb32.bundle.js"></script><script type="text/javascript" src="vendor.6.107b380331854694e287.bundle.js"></script><script type="text/javascript" src="main.3.f0a05ef7e66802b0dc1a.bundle.js"></script></body></html>
