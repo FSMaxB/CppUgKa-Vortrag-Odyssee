@@ -2,6 +2,7 @@ meta:
   title: "Odyssee von C nach C++, ein Reisebericht"
   thumbnail:
   description:
+  siteName: fsmaxb.github.io/cppugka-vortrag-odyssee
   sns:
 slide:
   loop: false
